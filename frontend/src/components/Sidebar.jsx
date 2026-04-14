@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, LogOut, Leaf } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, LogOut, Leaf, BarChart2, User, Target } from 'lucide-react';
 import { getCurrency } from '../utils/currency';
 
 const Sidebar = () => {
@@ -13,6 +13,9 @@ const Sidebar = () => {
     { icon: <LayoutDashboard size={18}/>, label: 'Dashboard', path: '/dashboard' },
     { icon: <TrendingUp size={18}/>, label: 'Incomes', path: '/incomes' },
     { icon: <TrendingDown size={18}/>, label: 'Expenses', path: '/expenses' },
+    { icon: <Target size={18}/>, label: 'Budgets', path: '/budgets' },
+    { icon: <BarChart2 size={18}/>, label: 'Analytics', path: '/analytics' },
+    { icon: <User size={18}/>, label: 'Profile', path: '/profile' },
   ];
 
   return (
@@ -73,7 +76,7 @@ const Sidebar = () => {
       {/* Logout */}
       <div className="p-4 border-t" style={{ borderColor: '#E5EDE9' }}>
         <button
-          onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
+          onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); navigate('/login'); }}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-80"
           style={{ color: '#ef4444', background: '#FEF2F2' }}>
           <LogOut size={17}/> Logout

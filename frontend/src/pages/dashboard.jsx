@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { PlusCircle, X, Target, Download, TrendingUp, TrendingDown, Trash2, Filter, Leaf } from 'lucide-react';
+import { PlusCircle, X, Target, Download, TrendingUp, TrendingDown, Trash2, Filter, FileText, Table, File } from 'lucide-react';
 
 import Sidebar from '../components/Sidebar';
 import HistoryChart from '../components/HistoryChart';
@@ -10,12 +10,6 @@ import HealthScoreCard from '../components/HealthScoreCard';
 import ReceiptScanner from '../components/ReceiptScanner';
 import AIAdvisorBot from '../components/AIAdvisorBot';
 import NudgeSystem from '../components/NudgeSystem';
-import LifestyleRatio from '../components/LifestyleRatio';
-import ExpensePrediction from '../components/ExpensePrediction';
-import WhatIfSimulator from '../components/WhatIfSimulator';
-import ReportExporter from '../components/ReportExporter';
-import CurrencyConverter from '../components/CurrencyConverter';
-import CurrencySetup from '../components/CurrencySetup';
 
 import { getHealthScore } from '../utils/healthCalc';
 import { exportToCSV } from '../utils/exportUtils';
@@ -28,9 +22,10 @@ const Dashboard = () => {
   const [budgets, setBudgets] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [autoCategorizingTitle, setAutoCategorizingTitle] = useState('');
-  const [showCurrencySetup, setShowCurrencySetup] = useState(!localStorage.getItem('currency'));
+  const [exportOpen, setExportOpen] = useState(false);
   const [formData, setFormData] = useState({ title: '', amount: '', category: 'General', type: 'expense' });
   const [budgetData, setBudgetData] = useState({ category: 'Food', limit: '' });
+  const exportRef = useRef(null);
 
   const fetchData = async () => {
     try {
@@ -46,6 +41,16 @@ const Dashboard = () => {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (exportRef.current && !exportRef.current.contains(e.target)) {
+        setExportOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   useEffect(() => {
     if (!formData.title || formData.title.length < 3) return;
@@ -70,7 +75,9 @@ const Dashboard = () => {
   const expenses = transactions.filter(t => t.type === 'expense').reduce((a, t) => a + t.amount, 0);
   const balance = income - expenses;
   const healthScore = getHealthScore(income, expenses, budgets);
-  const filteredTransactions = categoryFilter ? transactions.filter(t => t.category === categoryFilter) : transactions;
+  const filteredTransactions = categoryFilter
+    ? transactions.filter(t => t.category === categoryFilter)
+    : transactions;
   const currency = getCurrency();
 
   const handleTxSubmit = async (e) => {
@@ -112,7 +119,11 @@ const Dashboard = () => {
     setBudgetData({ category: 'Food', limit: '' });
   };
 
-  if (showCurrencySetup) return <CurrencySetup onComplete={() => setShowCurrencySetup(false)} />;
+  const exportItems = [
+    { icon: <FileText size={14}/>, label: 'Export PDF', color: '#ef4444', action: () => window.print() },
+    { icon: <Table size={14}/>, label: 'Export Excel', color: '#059669', action: () => exportToCSV(transactions) },
+    { icon: <File size={14}/>, label: 'Export CSV', color: '#3b82f6', action: () => exportToCSV(transactions) },
+  ];
 
   return (
     <div className="flex min-h-screen" style={{ background: '#F0F4F3' }}>
@@ -128,18 +139,53 @@ const Dashboard = () => {
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           </div>
-          <div className="flex gap-3">
-            <button onClick={() => exportToCSV(transactions)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-80"
-              style={{ background: '#FFFFFF', color: '#6B7280', border: '1px solid #E5EDE9' }}>
-              <Download size={15}/> Export
-            </button>
-            <button onClick={() => { setModalMode('budget'); setShowModal(true); }}
+
+          <div className="flex gap-3 items-center">
+            {/* Export Dropdown */}
+            <div className="relative" ref={exportRef}>
+              <button
+                onClick={() => setExportOpen(prev => !prev)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-80"
+                style={{ background: '#FFFFFF', color: '#6B7280', border: '1px solid #E5EDE9' }}>
+                <Download size={15}/> Export
+              </button>
+
+              {exportOpen && (
+                <div
+                  className="absolute right-0 rounded-2xl shadow-2xl overflow-hidden"
+                  style={{
+                    top: '110%',
+                    background: '#FFFFFF',
+                    border: '1px solid #E5EDE9',
+                    width: '200px',
+                    zIndex: 9999
+                  }}>
+                  {exportItems.map((item, i) => (
+                    <button
+                      key={item.label}
+                      onClick={() => { item.action(); setExportOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold transition-all hover:opacity-70"
+                      style={{
+                        color: item.color,
+                        borderBottom: i < exportItems.length - 1 ? '1px solid #F3F4F6' : 'none',
+                        background: '#FFFFFF'
+                      }}>
+                      {item.icon} {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => { setModalMode('budget'); setShowModal(true); }}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-80"
               style={{ background: '#F0FDF4', color: '#059669', border: '1px solid #BBF7D0' }}>
               <Target size={15}/> Set Budget
             </button>
-            <button onClick={() => { setModalMode('transaction'); setShowModal(true); }}
+
+            <button
+              onClick={() => { setModalMode('transaction'); setShowModal(true); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition-all hover:opacity-90 active:scale-95"
               style={{ background: 'linear-gradient(135deg, #059669, #34d399)' }}>
               <PlusCircle size={15}/> Add Transaction
@@ -177,10 +223,18 @@ const Dashboard = () => {
         </div>
 
         {/* Budgets + Transactions + Pie */}
-        <div className="grid grid-cols-12 gap-5 mb-5">
+        <div className="grid grid-cols-12 gap-5">
           <div className="col-span-4 rounded-2xl p-6"
             style={{ background: '#FFFFFF', border: '1px solid #E5EDE9' }}>
-            <h3 className="font-black mb-4" style={{ color: '#111827' }}>Category Budgets</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black" style={{ color: '#111827' }}>Category Budgets</h3>
+              <button
+                onClick={() => { setModalMode('budget'); setShowModal(true); }}
+                className="text-xs font-bold px-3 py-1.5 rounded-full transition-all hover:opacity-80"
+                style={{ background: '#F0FDF4', color: '#059669', border: '1px solid #BBF7D0' }}>
+                + Add
+              </button>
+            </div>
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {budgets.length > 0 ? budgets.map(b => (
                 <BudgetCard key={b.category} {...b} />
@@ -197,7 +251,7 @@ const Dashboard = () => {
             style={{ background: '#FFFFFF', border: '1px solid #E5EDE9' }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-black" style={{ color: '#111827' }}>
-                {categoryFilter ? `${categoryFilter}` : 'Recent Transactions'}
+                {categoryFilter ? categoryFilter : 'Recent Transactions'}
               </h3>
               {categoryFilter && (
                 <button onClick={() => setCategoryFilter(null)}
@@ -226,23 +280,6 @@ const Dashboard = () => {
               <CategoryChart transactions={transactions} onCategoryClick={cat => setCategoryFilter(cat)} />
             </div>
           </div>
-        </div>
-
-        {/* Lifestyle Ratio */}
-        <div className="mb-5">
-          <LifestyleRatio transactions={transactions} />
-        </div>
-
-        {/* AI Row */}
-        <div className="grid grid-cols-2 gap-5 mb-5">
-          <ExpensePrediction />
-          <WhatIfSimulator />
-        </div>
-
-        {/* Export + Currency */}
-        <div className="grid grid-cols-2 gap-5 mb-5">
-          <ReportExporter transactions={transactions} budgets={budgets} />
-          <CurrencyConverter />
         </div>
 
       </main>
